@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Signal,
   Sliders,
+  Thermometer,
   Zap,
   Clock,
   Radio,
@@ -39,7 +40,7 @@ import {
   Area
 } from "recharts";
 
-// Mock Time-Series Data for Gardu 3-Phase Monitoring
+// Mock Time-Series Data for Gardu 3-Phase & Thermal Monitoring
 const generateTimeSeriesData = () => {
   const data = [];
   const now = new Date();
@@ -47,9 +48,13 @@ const generateTimeSeriesData = () => {
     const time = new Date(now.getTime() - i * 60 * 60 * 1000);
     const timeStr = time.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
     
-    // Add realistic 3-phase variations
+    // Add realistic 3-phase & thermal variations
     const baseV = 228.5 + Math.sin(i * 0.4) * 3.5;
     const baseI = 45 + Math.cos(i * 0.3) * 14;
+    const baseTRoom = 31.5 + Math.sin(i * 0.2) * 1.8;
+    const baseTR = 41.2 + (baseI * 0.15) + (Math.random() * 1.5 - 0.75);
+    const baseTS = 40.5 + (baseI * 0.14) + (Math.random() * 1.5 - 0.75);
+    const baseTT = 43.1 + (baseI * 0.16) + (Math.random() * 1.5 - 0.75);
     
     data.push({
       time: timeStr,
@@ -59,6 +64,10 @@ const generateTimeSeriesData = () => {
       iR: +(baseI + (Math.random() * 4 - 2)).toFixed(1),
       iS: +(baseI - 3.5 + (Math.random() * 4 - 2)).toFixed(1),
       iT: +(baseI + 2.1 + (Math.random() * 4 - 2)).toFixed(1),
+      tempRoom: +(baseTRoom).toFixed(1),
+      tempCableR: +(baseTR).toFixed(1),
+      tempCableS: +(baseTS).toFixed(1),
+      tempCableT: +(baseTT).toFixed(1),
       powerKW: +((baseV * baseI * 3 * 0.95) / 1000).toFixed(2),
       unbalancePct: +(3.2 + Math.random() * 2.1).toFixed(1),
       anomalyScore: +(0.08 + Math.random() * 0.07).toFixed(2)
@@ -188,6 +197,10 @@ export default function DashboardGAPIN() {
           iR: newI,
           iS: +(newI - 2.8).toFixed(1),
           iT: +(newI + 1.9).toFixed(1),
+          tempRoom: +(31.8 + Math.random() * 0.8 - 0.4).toFixed(1),
+          tempCableR: +(41.5 + (newI * 0.15) + (Math.random() - 0.5)).toFixed(1),
+          tempCableS: +(40.8 + (newI * 0.14) + (Math.random() - 0.5)).toFixed(1),
+          tempCableT: +(43.4 + (newI * 0.16) + (Math.random() - 0.5)).toFixed(1),
           powerKW: +((newV * newI * 3 * 0.96) / 1000).toFixed(2),
           unbalancePct: +(3.6 + Math.random() * 1.4).toFixed(1),
           anomalyScore: +(0.09 + Math.random() * 0.04).toFixed(2)
@@ -203,6 +216,7 @@ export default function DashboardGAPIN() {
   const currentSnapshot = chartData.length > 0 ? chartData[chartData.length - 1] : {
     vR: 229.8, vS: 228.7, vT: 230.5,
     iR: 46.2, iS: 43.4, iT: 48.1,
+    tempRoom: 31.8, tempCableR: 42.1, tempCableS: 41.2, tempCableT: 44.5,
     powerKW: 30.52, unbalancePct: 3.8, anomalyScore: 0.1
   };
 
@@ -231,6 +245,10 @@ export default function DashboardGAPIN() {
       { parameter: "VOLTAGE", phase: "S", scope: "PHASE_TO_NEUTRAL", raw_value: "0x08F0", engineering_value: currentSnapshot.vS, unit: "V", quality: "VALID" },
       { parameter: "VOLTAGE", phase: "T", scope: "PHASE_TO_NEUTRAL", raw_value: "0x0902", engineering_value: currentSnapshot.vT, unit: "V", quality: "VALID" },
       { parameter: "CURRENT", phase: "R", scope: "PHASE_LINE", raw_value: "0x01C2", engineering_value: currentSnapshot.iR, unit: "A", quality: "VALID" },
+      { parameter: "TEMPERATURE", phase: "ROOM", scope: "ENCLOSURE_PANEL", raw_value: "0x01F4", engineering_value: currentSnapshot.tempRoom, unit: "°C", quality: "VALID" },
+      { parameter: "TEMPERATURE", phase: "R", scope: "CABLE_TERMINAL", raw_value: "0x02A5", engineering_value: currentSnapshot.tempCableR, unit: "°C", quality: "VALID" },
+      { parameter: "TEMPERATURE", phase: "S", scope: "CABLE_TERMINAL", raw_value: "0x029C", engineering_value: currentSnapshot.tempCableS, unit: "°C", quality: "VALID" },
+      { parameter: "TEMPERATURE", phase: "T", scope: "CABLE_TERMINAL", raw_value: "0x02BD", engineering_value: currentSnapshot.tempCableT, unit: "°C", quality: "VALID" },
       { parameter: "ACTIVE_POWER", phase: "TOTAL", scope: "THREE_PHASE", raw_value: "0x6E10", engineering_value: currentSnapshot.powerKW, unit: "kW", quality: "VALID" },
       { parameter: "CUMULATIVE_ACTIVE_ENERGY_IMPORT", phase: "TOTAL", scope: "THREE_PHASE", raw_value: "0x07A65B", engineering_value: 128456.72, unit: "kWh", quality: "VALID" }
     ],
@@ -394,8 +412,8 @@ export default function DashboardGAPIN() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1 space-y-6">
         {activeTab === "overview" && (
           <>
-            {/* TOP METRIC CARDS (TEGANGAN, ARUS, DAYA, UNBALANCE) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* TOP METRIC CARDS (TEGANGAN, ARUS, SUHU TERMAL, DAYA, UNBALANCE) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
               {/* TEGANGAN 3-FASA CARD */}
               <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-xl hover:border-slate-700 transition-all">
                 <div className="flex items-center justify-between mb-3">
@@ -407,19 +425,19 @@ export default function DashboardGAPIN() {
                 <div className="space-y-2">
                   <div className="flex items-baseline justify-between">
                     <span className="text-xs text-rose-400 font-mono font-bold">V_R</span>
-                    <span className="text-xl font-bold font-mono text-slate-100">{currentSnapshot.vR} <span className="text-xs font-normal text-slate-400">V</span></span>
+                    <span className="text-lg font-bold font-mono text-slate-100">{currentSnapshot.vR} <span className="text-xs font-normal text-slate-400">V</span></span>
                   </div>
                   <div className="flex items-baseline justify-between">
                     <span className="text-xs text-amber-400 font-mono font-bold">V_S</span>
-                    <span className="text-xl font-bold font-mono text-slate-100">{currentSnapshot.vS} <span className="text-xs font-normal text-slate-400">V</span></span>
+                    <span className="text-lg font-bold font-mono text-slate-100">{currentSnapshot.vS} <span className="text-xs font-normal text-slate-400">V</span></span>
                   </div>
                   <div className="flex items-baseline justify-between">
                     <span className="text-xs text-cyan-400 font-mono font-bold">V_T</span>
-                    <span className="text-xl font-bold font-mono text-slate-100">{currentSnapshot.vT} <span className="text-xs font-normal text-slate-400">V</span></span>
+                    <span className="text-lg font-bold font-mono text-slate-100">{currentSnapshot.vT} <span className="text-xs font-normal text-slate-400">V</span></span>
                   </div>
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Standard PLN 220V ±10%</span>
+                  <span>Standard 220V ±10%</span>
                   <span className="text-emerald-400 font-medium">Nominal Normal</span>
                 </div>
               </div>
@@ -435,15 +453,15 @@ export default function DashboardGAPIN() {
                 <div className="space-y-2">
                   <div className="flex items-baseline justify-between">
                     <span className="text-xs text-rose-400 font-mono font-bold">I_R</span>
-                    <span className="text-xl font-bold font-mono text-slate-100">{currentSnapshot.iR} <span className="text-xs font-normal text-slate-400">A</span></span>
+                    <span className="text-lg font-bold font-mono text-slate-100">{currentSnapshot.iR} <span className="text-xs font-normal text-slate-400">A</span></span>
                   </div>
                   <div className="flex items-baseline justify-between">
                     <span className="text-xs text-amber-400 font-mono font-bold">I_S</span>
-                    <span className="text-xl font-bold font-mono text-slate-100">{currentSnapshot.iS} <span className="text-xs font-normal text-slate-400">A</span></span>
+                    <span className="text-lg font-bold font-mono text-slate-100">{currentSnapshot.iS} <span className="text-xs font-normal text-slate-400">A</span></span>
                   </div>
                   <div className="flex items-baseline justify-between">
                     <span className="text-xs text-cyan-400 font-mono font-bold">I_T</span>
-                    <span className="text-xl font-bold font-mono text-slate-100">{currentSnapshot.iT} <span className="text-xs font-normal text-slate-400">A</span></span>
+                    <span className="text-lg font-bold font-mono text-slate-100">{currentSnapshot.iT} <span className="text-xs font-normal text-slate-400">A</span></span>
                   </div>
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
@@ -452,10 +470,44 @@ export default function DashboardGAPIN() {
                 </div>
               </div>
 
+              {/* SUHU TERMAL (KABEL RST & RUANG PANEL) CARD */}
+              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-xl hover:border-slate-700 transition-all">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Suhu Kabel & Ruang</span>
+                  <span className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <Thermometer className="h-4 w-4" />
+                  </span>
+                </div>
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-slate-400">Kabel Fasa R</span>
+                    <span className="font-mono font-bold text-rose-400">{currentSnapshot.tempCableR} °C</span>
+                  </div>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-slate-400">Kabel Fasa S</span>
+                    <span className="font-mono font-bold text-amber-400">{currentSnapshot.tempCableS} °C</span>
+                  </div>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-slate-400">Kabel Fasa T</span>
+                    <span className="font-mono font-bold text-cyan-400">{currentSnapshot.tempCableT} °C</span>
+                  </div>
+                  <div className="flex items-baseline justify-between pt-1 border-t border-slate-800">
+                    <span className="text-slate-400">Ruang Panel</span>
+                    <span className="font-mono font-bold text-emerald-400">{currentSnapshot.tempRoom} °C</span>
+                  </div>
+                </div>
+                <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400">Status Termal</span>
+                  <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Normal (&lt;65°C)
+                  </span>
+                </div>
+              </div>
+
               {/* DAYA AKTIFF & POWER FACTOR */}
               <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-xl hover:border-slate-700 transition-all">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Daya & Faktor Daya</span>
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Daya & PF</span>
                   <span className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
                     <LineChartIcon className="h-4 w-4" />
                   </span>
@@ -463,31 +515,31 @@ export default function DashboardGAPIN() {
                 <div className="space-y-3">
                   <div>
                     <span className="text-xs text-slate-400">Daya Aktif Total</span>
-                    <div className="text-2xl font-black font-mono text-cyan-400">
+                    <div className="text-xl font-black font-mono text-cyan-400">
                       {currentSnapshot.powerKW} <span className="text-xs font-semibold text-slate-300">kW</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between pt-1">
                     <div>
-                      <span className="text-xs text-slate-400 block">Power Factor</span>
-                      <span className="text-lg font-bold font-mono text-slate-100">0.96</span>
+                      <span className="text-xs text-slate-400 block">PF</span>
+                      <span className="text-base font-bold font-mono text-slate-100">0.96</span>
                     </div>
                     <div className="text-right">
                       <span className="text-xs text-slate-400 block">Frekuensi</span>
-                      <span className="text-lg font-bold font-mono text-slate-100">50.01 Hz</span>
+                      <span className="text-base font-bold font-mono text-slate-100">50.01 Hz</span>
                     </div>
                   </div>
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
                   <span>Energi Kumulatif</span>
-                  <span className="font-mono text-cyan-300 font-semibold">128,456.72 kWh</span>
+                  <span className="font-mono text-cyan-300 font-semibold">128.45 MWh</span>
                 </div>
               </div>
 
               {/* UNBALANCE & ML ANOMALY SCORE */}
               <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-xl hover:border-slate-700 transition-all">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Beban Unbalance & Anomali</span>
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Unbalance & Anomali</span>
                   <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                     <Flame className="h-4 w-4" />
                   </span>
@@ -495,10 +547,10 @@ export default function DashboardGAPIN() {
                 <div className="space-y-3">
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-slate-400">Ketidakseimbangan (Unbalance)</span>
+                      <span className="text-xs text-slate-400">Unbalance</span>
                       <span className="text-xs font-bold font-mono text-emerald-400">{currentSnapshot.unbalancePct}%</span>
                     </div>
-                    <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
                       <div
                         className="bg-emerald-500 h-full rounded-full transition-all duration-500"
                         style={{ width: `${Math.min(currentSnapshot.unbalancePct * 5, 100)}%` }}
@@ -508,10 +560,10 @@ export default function DashboardGAPIN() {
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-slate-400">Isolation Forest Score</span>
+                      <span className="text-xs text-slate-400">Anomal Score</span>
                       <span className="text-xs font-bold font-mono text-cyan-400">{currentSnapshot.anomalyScore}</span>
                     </div>
-                    <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
                       <div
                         className="bg-cyan-500 h-full rounded-full transition-all duration-500"
                         style={{ width: `${currentSnapshot.anomalyScore * 100}%` }}
@@ -520,9 +572,9 @@ export default function DashboardGAPIN() {
                   </div>
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Status Algoritma ML</span>
+                  <span>Status ML</span>
                   <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" /> Normal (Pola Aman)
+                    <CheckCircle2 className="h-3 w-3" /> Normal
                   </span>
                 </div>
               </div>
@@ -530,7 +582,7 @@ export default function DashboardGAPIN() {
 
             {/* REAL-TIME CHARTS SECTION */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* TEGANGAN & ARUS 3-PHASE TIME SERIES (2 COLS) */}
+              {/* TEGANGAN 3-PHASE TIME SERIES (2 COLS) */}
               <div className="lg:col-span-2 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl">
                 <div className="flex items-center justify-between mb-6">
                   <div>
@@ -602,6 +654,43 @@ export default function DashboardGAPIN() {
                     Detail Forecast
                   </button>
                 </div>
+              </div>
+            </div>
+
+            {/* DEDICATED THERMAL MONITORING CHART (KABEL RST & RUANG PANEL) */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl">
+              <div className="flex flex-wrap items-center justify-between mb-6 gap-y-2">
+                <div>
+                  <h3 className="font-bold text-slate-100 text-sm flex items-center space-x-2">
+                    <Thermometer className="h-4 w-4 text-amber-400" />
+                    <span>Grafik Tren Suhu Termal Kabel (R, S, T) & Ruang Panel Gardu (°C)</span>
+                  </h3>
+                  <p className="text-xs text-slate-400">Mendeteksi risiko terminal kabel kendor (*overheating*) & pemantauan suhu lingkungan panel besi</p>
+                </div>
+                <div className="flex items-center space-x-4 text-xs font-mono">
+                  <span className="flex items-center gap-1.5 text-rose-400"><span className="h-2.5 w-2.5 rounded-full bg-rose-500"></span> Suhu Kabel R</span>
+                  <span className="flex items-center gap-1.5 text-amber-400"><span className="h-2.5 w-2.5 rounded-full bg-amber-500"></span> Suhu Kabel S</span>
+                  <span className="flex items-center gap-1.5 text-cyan-400"><span className="h-2.5 w-2.5 rounded-full bg-cyan-500"></span> Suhu Kabel T</span>
+                  <span className="flex items-center gap-1.5 text-emerald-400"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500"></span> Suhu Ruang Panel</span>
+                </div>
+              </div>
+
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <XAxis dataKey="time" stroke="#64748b" fontSize={11} />
+                    <YAxis domain={[20, 90]} stroke="#64748b" fontSize={11} unit="°C" />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", borderRadius: "0.75rem" }}
+                      itemStyle={{ fontSize: "12px", color: "#f8fafc" }}
+                    />
+                    <Line type="monotone" dataKey="tempCableR" stroke="#f43f5e" strokeWidth={2} dot={false} name="Suhu Kabel Fasa R (°C)" />
+                    <Line type="monotone" dataKey="tempCableS" stroke="#f59e0b" strokeWidth={2} dot={false} name="Suhu Kabel Fasa S (°C)" />
+                    <Line type="monotone" dataKey="tempCableT" stroke="#06b6d4" strokeWidth={2} dot={false} name="Suhu Kabel Fasa T (°C)" />
+                    <Line type="monotone" dataKey="tempRoom" stroke="#10b981" strokeWidth={2} strokeDasharray="4 4" dot={false} name="Suhu Ruang Panel (°C)" />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </>
@@ -758,8 +847,16 @@ export default function DashboardGAPIN() {
                   <span className="font-mono text-slate-200">SIMCom A7670C (LTE Cat-1)</span>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
-                  <span className="text-slate-400">Antarmuka RS485</span>
+                  <span className="text-slate-400">Antarmuka RS485 Meter</span>
                   <span className="font-mono text-slate-200">Modul XY-017 (MAX485/SP3485)</span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
+                  <span className="text-slate-400">Sensor Suhu Kabel (R, S, T)</span>
+                  <span className="font-mono text-amber-400 font-semibold">3x Probe DS18B20 (1-Wire Bus)</span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
+                  <span className="text-slate-400">Sensor Suhu Ruang Panel</span>
+                  <span className="font-mono text-emerald-400 font-semibold">1x Sensor Enclosure (Ambient)</span>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
                   <span className="text-slate-400">Real-Time Clock (RTC)</span>
@@ -783,20 +880,24 @@ export default function DashboardGAPIN() {
                   <span className="font-mono text-emerald-400 font-bold">OK (0 Errors)</span>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
-                  <span className="text-slate-400">Suhu Internal RTC DS3231</span>
-                  <span className="font-mono text-slate-200">31.5 °C</span>
+                  <span className="text-slate-400">Status 4 Channel Sensor Suhu</span>
+                  <span className="font-mono text-emerald-400 font-bold">OK (4 Probe Active)</span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
+                  <span className="text-slate-400">Suhu Kabel Tertinggi (Max)</span>
+                  <span className="font-mono text-amber-400 font-bold">{Math.max(currentSnapshot.tempCableR, currentSnapshot.tempCableS, currentSnapshot.tempCableT)} °C (Kabel T)</span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
+                  <span className="text-slate-400">Suhu Ruang Panel Gardu</span>
+                  <span className="font-mono text-slate-200">{currentSnapshot.tempRoom} °C</span>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
                   <span className="text-slate-400">Sisa Memori SRAM (ESP32)</span>
-                  <span className="font-mono text-cyan-400 font-bold">284 KB Free</span>
+                  <span className="font-mono text-cyan-400 font-bold">280 KB Free</span>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
                   <span className="text-slate-400">Status Penyimpanan Buffer</span>
                   <span className="font-mono text-slate-200">0 Cached Messages</span>
-                </div>
-                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
-                  <span className="text-slate-400">Protokol Transmisi</span>
-                  <span className="font-mono text-slate-200">MQTT over TCP (Port 1883)</span>
                 </div>
               </div>
             </div>
